@@ -24,8 +24,11 @@ typedef ErrorCallback = void Function(ProtocolException error);
 
 /// This is a base client for the tus(https://tus.io) protocol.
 abstract class TusBaseClient {
-  /// The tus server URL
-  final String url;
+  /// The TUS endPoint
+  final String? endpoint;
+
+  /// The TUS uploadUrl
+  final String? uploadUrl;
 
   /// The tus protocol version you want to use
   /// Default value: 1.0.0
@@ -66,7 +69,8 @@ abstract class TusBaseClient {
   String? _errorMessage;
 
   TusBaseClient({
-    required this.url,
+    this.endpoint,
+    this.uploadUrl,
     int? chunkSize,
     this.tusVersion = Headers.defaultTusVersion,
     this.cache,
@@ -78,7 +82,11 @@ abstract class TusBaseClient {
         headers = headers?.parseToMapString ?? {},
         timeout = timeout ?? const Duration(seconds: 30),
         httpClient = httpClient ?? http.Client(),
-        _state = TusUploadState.notStarted;
+        _state = TusUploadState.notStarted,
+        assert(
+          endpoint != null || uploadUrl != null,
+          'endpoint or uploadUrl must be provided',
+        );
 
   /// Get the upload state
   TusUploadState get state => _state;
@@ -89,8 +97,8 @@ abstract class TusBaseClient {
   /// Whether the client supports resuming
   bool get resumingEnabled => cache != null;
 
-  /// The URI on the server for the file
-  String get uploadUrl => _uploadURI.toString();
+  /// The URI which was obtailed from server after creating the upload
+  String get serverUploadUrl => _uploadURI.toString();
 
   /// The fingerprint of the file being uploaded
   String get fingerprint => _fingerprint;
@@ -114,30 +122,43 @@ abstract class TusBaseClient {
       Headers.uploadLengthHeader: '$_fileSize',
     };
 
-    final response = await httpClient.post(
-      Uri.parse(url),
-      headers: createHeaders,
-    );
+    final endpoint = this.endpoint;
+    final uploadUrl = this.uploadUrl;
 
-    if (!(response.statusCode >= 200 && response.statusCode < 300)) {
-      _state = TusUploadState.error;
-      throw ProtocolException(
-        _errorMessage =
-            'Unexpected status code (${response.statusCode}) while creating upload',
-        response,
-      );
+    if (endpoint == null && uploadUrl == null) {
+      throw Exception(
+          'Both endpoint and uploadUrl is null, thus uploading failed');
     }
 
-    String locationURL = response.headers[Headers.location]?.toString() ?? '';
-    if (locationURL.isEmpty) {
-      _state = TusUploadState.error;
-      throw ProtocolException(
-        _errorMessage = 'Missing upload URL in response for creating upload',
-        response,
+    if (endpoint != null) {
+      final response = await httpClient.post(
+        Uri.parse(endpoint),
+        headers: createHeaders,
       );
+
+      if (!(response.statusCode >= 200 && response.statusCode < 300)) {
+        _state = TusUploadState.error;
+        throw ProtocolException(
+          _errorMessage =
+              'Unexpected status code (${response.statusCode}) while creating upload',
+          response,
+        );
+      }
+
+      String locationURL = response.headers[Headers.location]?.toString() ?? '';
+      if (locationURL.isEmpty) {
+        _state = TusUploadState.error;
+        throw ProtocolException(
+          _errorMessage = 'Missing upload URL in response for creating upload',
+          response,
+        );
+      }
+
+      _uploadURI = _parseToURI(endpoint: endpoint, locationURL: locationURL);
+    } else if (uploadUrl != null) {
+      _uploadURI = Uri.parse(uploadUrl);
     }
 
-    _uploadURI = _parseToURI(locationURL);
     cache?.set(_fingerprint, _uploadURI.toString());
     _state = TusUploadState.created;
   }
@@ -323,9 +344,12 @@ abstract class TusBaseClient {
   }
 
   /// Override this method to customize creating file fingerprint
-  String generateFingerprint() =>
-      '$url${fileName != null ? '_$fileName' : ''}_$_fileSize'
-          .replaceAll(RegExp(r'\W+'), '.');
+  String generateFingerprint() {
+    final base = endpoint ?? uploadUrl;
+
+    return '$base${fileName != null ? '_$fileName' : ''}_$_fileSize'
+        .replaceAll(RegExp(r'\W+'), '.');
+  }
 
   /// Override this to customize the header 'Upload-Metadata'
   String generateMetadata() {
@@ -375,12 +399,15 @@ abstract class TusBaseClient {
     return int.tryParse(offset);
   }
 
-  Uri _parseToURI(String locationURL) {
+  Uri _parseToURI({
+    required String endpoint,
+    required String locationURL,
+  }) {
     if (locationURL.contains(',')) {
       locationURL = locationURL.substring(0, locationURL.indexOf(','));
     }
     Uri uploadURI = Uri.parse(locationURL);
-    Uri baseURI = Uri.parse(url);
+    Uri baseURI = Uri.parse(endpoint);
     if (uploadURI.host.isEmpty) {
       uploadURI = uploadURI.replace(host: baseURI.host, port: baseURI.port);
     }

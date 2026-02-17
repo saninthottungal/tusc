@@ -28,7 +28,7 @@ void main() {
     final reallyLongFilePath =
         'this/is/a/really/long/file/path/that/should/be/hashed/to/a/fingerprint/that/is/longer/than/256/and/should/not/be/truncated/to/128/characters/so/that/we/can/test/the/fingerprint/generation/and/make/sure/it/works/as/expected/and/does/not/cause/any/issues/with/the/tus/client/implementation/and/should/be/able/to/be/uploaded/without/any/problems/or/errors/and/should/not/cause/any/performance/impact/on/the/upload/process/or/the/client/performance/in/general';
     final tusClient = TusClient(
-      url: uploadURL,
+      endpoint: uploadURL,
       file: XFile(reallyLongFilePath),
       chunkSize: 5.KB,
       cache: TusPersistentCache(''),
@@ -44,7 +44,7 @@ void main() {
       if (uploadURL.isEmpty) fail('No uploadURL to upload to');
       if (!imageFile.existsSync()) fail('No image file available to upload');
       final tusClient = TusClient(
-        url: uploadURL,
+        endpoint: uploadURL,
         file: XFile(imageFile.path),
         chunkSize: 5.KB,
         cache: TusMemoryCache(),
@@ -84,7 +84,7 @@ void main() {
             print(
               '------------------------Upload completed----------------------',
             );
-            print(tusClient.uploadUrl);
+            print(tusClient.serverUploadUrl);
             print(
               '--------------------------------------------------------------',
             );
@@ -114,7 +114,7 @@ void main() {
       if (uploadURL.isEmpty) fail('No uploadURL to upload to');
       if (!videoFile.existsSync()) fail('No video file available to upload');
       final tusClient = TusClient(
-        url: uploadURL,
+        endpoint: uploadURL,
         file: XFile(videoFile.path),
         chunkSize: 256.KB,
         cache: TusPersistentCache(''),
@@ -152,7 +152,7 @@ void main() {
           print(
             '------------------------Upload completed----------------------',
           );
-          print(tusClient.uploadUrl);
+          print(tusClient.serverUploadUrl);
           print(
             '--------------------------------------------------------------',
           );
@@ -245,7 +245,7 @@ void main() {
       if (uploadURL.isEmpty) fail('No uploadURL to upload to');
       if (!imageFile.existsSync()) fail('No image file available to upload');
       final tusClient = TusStreamClient(
-        url: uploadURL,
+        endpoint: uploadURL,
         fileStreamGenerator: () => imageFile.openRead(),
         fileSize: imageFile.lengthSync(),
         fileName: p.basename(imageFile.path),
@@ -287,7 +287,7 @@ void main() {
             print(
               '------------------------Upload completed----------------------',
             );
-            print(tusClient.uploadUrl);
+            print(tusClient.serverUploadUrl);
             print(
               '--------------------------------------------------------------',
             );
@@ -317,7 +317,7 @@ void main() {
       if (uploadURL.isEmpty) fail('No uploadURL to upload to');
       if (!videoFile.existsSync()) fail('No video file available to upload');
       final tusClient = TusStreamClient(
-        url: uploadURL,
+        endpoint: uploadURL,
         fileStreamGenerator: () => videoFile.openRead(),
         fileSize: videoFile.lengthSync(),
         fileName: p.basename(videoFile.path),
@@ -357,7 +357,7 @@ void main() {
           print(
             '------------------------Upload completed----------------------',
           );
-          print(tusClient.uploadUrl);
+          print(tusClient.serverUploadUrl);
           print(
             '--------------------------------------------------------------',
           );

@@ -5,11 +5,11 @@ import 'package:http/http.dart' as http;
 void main() async {
   /// File to be uploaded
   final file = XFile('/path/to/some/video.mp4');
-  final uploadURL = 'https://master.tus.io/files';
+  final endPoint = 'https://master.tus.io/files';
 
   /// Initialize a TusClient instance from a XFile
   /// This is the most common way to use the TusClient
-  final tusClient = initTusClient(file, uploadURL);
+  final tusClient = initTusClient(file, endPoint);
   handleClient(tusClient);
 
   /// Initialize a TusStreamClient instance from a Stream generator function
@@ -17,13 +17,13 @@ void main() async {
   /// The only difference is that this client doesn't rely on a file but rather
   /// on a stream of bytes. It's intended for cases where the file is excessively
   /// large.
-  final tusStreamClient = await initTusStreamClient(file, uploadURL);
+  final tusStreamClient = await initTusStreamClient(file, endPoint);
   handleClient(tusStreamClient);
 }
 
-TusBaseClient initTusClient(XFile file, String uploadURL) => TusClient(
+TusBaseClient initTusClient(XFile file, String endpoint) => TusClient(
       /// Required
-      url: uploadURL,
+      endpoint: endpoint,
 
       /// Required
       file: file,
@@ -55,10 +55,10 @@ TusBaseClient initTusClient(XFile file, String uploadURL) => TusClient(
       httpClient: http.Client(),
     );
 
-Future<TusBaseClient> initTusStreamClient(XFile file, String uploadURL) async =>
+Future<TusBaseClient> initTusStreamClient(XFile file, String endpoint) async =>
     TusStreamClient(
       /// Required
-      url: uploadURL,
+      endpoint: endpoint,
 
       /// Required
       fileStreamGenerator: () => file.openRead(),
@@ -109,7 +109,7 @@ void handleClient(TusBaseClient tusClient) {
     /// response: the http response of the last chunkSize uploaded
     onComplete: (response) {
       print('Upload Completed');
-      print(tusClient.uploadUrl.toString());
+      print(tusClient.serverUploadUrl.toString());
     },
     onTimeout: () {
       print('Upload timed out');

@@ -14,7 +14,8 @@ class TusClient extends TusBaseClient {
 
   TusClient({
     required this.file,
-    required super.url,
+    super.uploadUrl,
+    super.endpoint,
     super.chunkSize,
     super.tusVersion,
     super.cache,
